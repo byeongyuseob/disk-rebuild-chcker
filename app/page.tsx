@@ -18,6 +18,7 @@ import {
   Filter,
 } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,6 +61,10 @@ interface DiskArray {
   }[]
 }
 
+/**
+ * 테마(다크/라이트) 전환 버튼 컴포넌트
+ * @returns {JSX.Element}
+ */
 function ThemeToggle() {
   const { theme, setTheme, systemTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -120,6 +125,10 @@ function ThemeToggle() {
   )
 }
 
+/**
+ * 현재 테마 상태 및 저장 정보 표시 컴포넌트
+ * @returns {JSX.Element}
+ */
 function ThemeStatus() {
   const { theme, systemTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -464,6 +473,11 @@ function JBODStatus({ array }: { array: DiskArray }) {
   )
 }
 
+/**
+ * 어레이의 복수 리빌드/장애 상황에 대한 경고 메시지 및 액션 반환
+ * @param {DiskArray} array
+ * @returns {object|null} 경고 메시지/액션 또는 null
+ */
 function getMultipleRebuildWarning(array: DiskArray) {
   const rebuildingCount = array.disks.filter((d) => d.status === "rebuilding").length
   const failedCount = array.disks.filter((d) => d.status === "failed").length
@@ -498,6 +512,11 @@ function getMultipleRebuildWarning(array: DiskArray) {
   return null
 }
 
+/**
+ * 어레이의 위험도(critical/high/medium/low) 평가
+ * @param {DiskArray} array
+ * @returns {string} 위험도 레벨
+ */
 function getArrayRiskLevel(array: DiskArray) {
   const rebuildingCount = array.disks.filter((d) => d.status === "rebuilding").length
   const failedCount = array.disks.filter((d) => d.status === "failed").length
@@ -526,6 +545,12 @@ function getArrayRiskLevel(array: DiskArray) {
   return "low"
 }
 
+/**
+ * 대시보드 메인 컴포넌트. 여러 RAID/디스크 어레이의 상태, 리빌드 진행률, 위험도, 장애 상황 등을 시각화한다.
+ * - 필터, 뷰 모드, 자동 새로고침, 테마 전환 등 대시보드 핵심 기능 구현
+ * - 상태 관리: useState, useEffect
+ * - 주요 하위 컴포넌트: ThemeToggle, ThemeStatus, MultipleRebuildAlert, MultipleRebuildProgress, JBODStatus 등
+ */
 export default function DiskRebuildChecker() {
   const [arrays, setArrays] = useState<DiskArray[]>([
     {
@@ -694,34 +719,50 @@ export default function DiskRebuildChecker() {
   const [diskSearch, setDiskSearch] = useState("")
   const [currentPage, setCurrentPage] = useState(0)
   const disksPerPage = 20
+  const { toast } = useToast();
 
+  /**
+   * 어레이 상태를 새로고침(리빌드 진행률, ETA 등 업데이트)
+   * @async
+   * @throws {Error} 네트워크/API 오류 발생 시
+   */
   const refreshData = async () => {
-    setIsRefreshing(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      setIsRefreshing(true)
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Simulate progress updates for rebuilding arrays
-    setArrays((prev) =>
-      prev.map((array) => {
-        if (array.status === "rebuilding" && array.rebuildProgress < 100) {
-          const newProgress = Math.min(array.rebuildProgress + Math.random() * 3, 100)
-          const remainingHours = Math.max(0, (100 - newProgress) * 0.1)
-          const hours = Math.floor(remainingHours)
-          const minutes = Math.floor((remainingHours - hours) * 60)
+      // Simulate progress updates for rebuilding arrays
+      setArrays((prev) =>
+        prev.map((array) => {
+          if (array.status === "rebuilding" && array.rebuildProgress < 100) {
+            const newProgress = Math.min(array.rebuildProgress + Math.random() * 3, 100)
+            const remainingHours = Math.max(0, (100 - newProgress) * 0.1)
+            const hours = Math.floor(remainingHours)
+            const minutes = Math.floor((remainingHours - hours) * 60)
 
-          return {
-            ...array,
-            rebuildProgress: Math.round(newProgress),
-            estimatedTimeRemaining: newProgress >= 100 ? "0m" : `${hours}h ${minutes}m`,
-            status: newProgress >= 100 ? "healthy" : "rebuilding",
+            return {
+              ...array,
+              rebuildProgress: Math.round(newProgress),
+              estimatedTimeRemaining: newProgress >= 100 ? "0m" : `${hours}h ${minutes}m`,
+              status: newProgress >= 100 ? "healthy" : "rebuilding",
+            }
           }
-        }
-        return array
-      }),
-    )
+          return array
+        }),
+      )
 
-    setLastUpdated(new Date())
-    setIsRefreshing(false)
+      setLastUpdated(new Date())
+    } catch (error) {
+      toast({
+        title: "데이터 새로고침 실패",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive",
+      })
+      console.error('데이터 새로고침 실패:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   useEffect(() => {

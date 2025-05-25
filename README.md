@@ -56,4 +56,21 @@ MIT
 
 ---
 
-> 본 프로젝트는 실제 데이터센터/서버 환경에서의 RAID/디스크 모니터링을 위한 프론트엔드 대시보드 예시입니다. 
+> 본 프로젝트는 실제 데이터센터/서버 환경에서의 RAID/디스크 모니터링을 위한 프론트엔드 대시보드 예시입니다.
+
+## 주요 컴포넌트/로직 설명
+- **DiskRebuildChecker**: 대시보드 메인 컨테이너. RAID/디스크 어레이 상태, 리빌드 진행률, 위험도, 장애 상황 등 전체 UI/로직 총괄
+- **ThemeToggle/ThemeStatus**: 다크/라이트 테마 전환 및 상태 표시
+- **MultipleRebuildAlert/MultipleRebuildProgress/JBODStatus**: 어레이별 경고, 리빌드 진행률, JBOD 상태 등 시각화
+- **refreshData**: 어레이 상태 새로고침(비동기, 예외 처리 포함)
+- **getMultipleRebuildWarning/getArrayRiskLevel**: 어레이별 경고/위험도 평가 로직
+
+## 상태 관리 흐름
+- **useState/useEffect** 기반의 로컬 상태 관리
+  - 어레이 목록, 필터, 뷰 모드, 새로고침 상태 등
+- (필요시) 전역 상태 관리 도구 도입 가능 (예: context, recoil, zustand 등)
+
+## 예외 처리 및 사용자 알림
+- 비동기 데이터 갱신(refreshData) 등에서 try-catch로 예외 처리
+- 오류 발생 시 콘솔 출력 및 **토스트 알림**(useToast 활용) 등 사용자 피드백 제공
+- 네트워크/API 오류, 데이터 파싱 오류 등 다양한 예외 상황 대비 구조 설계 
